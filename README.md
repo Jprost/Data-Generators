@@ -1,4 +1,4 @@
-# Data-Generatorsand video deep learning model
+# Data-Generator sand video deep learning model
 This repo is a will present a reduced version of the work done at the Harvard Medical School in the biomedical informatics department between September 2019 and March 2020. The complet version with more details will be publicly available when the project will be published.
 
 In this project, the use of data generator will be exposed. They have two main advantage :
