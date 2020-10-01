@@ -25,4 +25,4 @@ The video data format is complexe and bulky. Many strategies were employed to de
 
 Another strategy would be to use 3D CNN were all the video array is provided to a convolutional layer. The temporal and spatial information is not dissociated (not presented in this repo).
 
-![Model](./Images/Model.png?raw=true "VideoDataGenerator")
+![Model](./Images/model.png?raw=true )
