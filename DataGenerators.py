@@ -14,20 +14,38 @@ from PreProcessing import PreProcessing
 
 ### Data Generator Class
 class DataGenerator(Sequence):
+    """
+    Inherits form the Sequence class (https://keras.io/utils/)
+    Custom data generator that avoid loading the entire dataset into the memory.
+    Manages all the data from retrieving to providing to the model.
+    Applies transformation at the population scale (uniformization, class proportion),
+    and at the sample scale (rotation, shifting, normalization) without any data
+    duplication.
+    Process batches of data in parallele, yield batch of data to feed the model.
+    
+    The class manages binary classification data and regression
 
+    The instance is call by an method of a Keras instance Sequential
+    (https://keras.io/models/sequential/)
+    or Model (https://keras.io/models/model/).
+    The methods are :  fit, evaluate, predict, fit/predict/evaluate _generator.
+    """
     def __init__(self, data_directory, ids,
                  batch_size=32,
                  shuffle=True):
+        """
+        INPUTS:
+            data_directory = directory of files location [str]
+            ids = list of samples [list]
+            batch_size = size of a batch [int]
+            shuffle = shuffle data at the beginning of epoch [boolean]
+        """
 
         self.data_directory = data_directory  # where to access the samples
-
-        # Get the ids that are intersecting the data base and the partitioning
-        ids_in_database = [int(file.split('.')[0]) for file in os.listdir(data_directory)]
-        self.list_IDs = list(set(ids) & set(ids_in_database))  # list of samples
+        self.list_IDs = ids # list of samples
 
         # a parallel indexing for batch access and shuffling
         self.indexes = np.arange(len(ids))
-
         # if data is shuffle at every epoch, default is True
         self.shuffle = shuffle
         self.batch_size = batch_size  # size of the batch
@@ -52,20 +70,7 @@ class DataGenerator(Sequence):
 
 class VideoGenerator(DataGenerator, PreProcessing):
     """
-    Inherits form the Sequence class (https://keras.io/utils/)
-    Custom data generator that avoid loading the entire dataset into the memory.
-    Manages all the data from retrieving to providing to the model.
-    Applies transformation at the population scale (uniformization, class proportion),
-    and at the sample scale (rotation, shifting, normalization) without any data
-    duplication.
-    Process batches of data in paralele insInstead, yield batch of data to feed the model.
-    
-    The class manages binary classification data and regression
-
-    The instance is call by an method of a Keras instance Sequential
-    (https://keras.io/models/sequential/)
-    or Model (https://keras.io/models/model/).
-    The methods are :  fit, evaluate, predict, fit/predict/evaluate _generator.
+    Data Generator adapted form managing video data stored as .npy numpy arrays
     """
 
     def __init__(self, data_directory, ids, labels, dim,
@@ -93,6 +98,9 @@ class VideoGenerator(DataGenerator, PreProcessing):
                                              ids=ids,
                                              batch_size=batch_size,
                                              shuffle=shuffle)
+        if testing:  # testing mode
+            self._testing_()  # adjusts the settings to make it a simple iterator
+        
         self.labels = labels  # corresponding labels
 
         # - Pre-processing
@@ -103,8 +111,7 @@ class VideoGenerator(DataGenerator, PreProcessing):
         # - Edit the distribution of the labels and ids
         self._data_distribution(balanced, uniform)
 
-        if testing:  # testing mode
-            self._testing_()  # adjusts the settings to make it a simple iterator
+
 
         # Allocate memory once for data loading
         self.npy = '.npy'
@@ -225,23 +232,24 @@ class VideoGenerator(DataGenerator, PreProcessing):
         """
         Makes the distribution unifrom of labels value.
         Used for regression only.
+        Returns a list of id which labels are uniformly distributed.
         """
-        # count the max occurrence of a label
+        # count the max occurrence of labels
         counts = self.labels.value_counts()
         max_counts = counts.max()
         df_uniform = pd.Series()
 
-        # for each count associated with each label
+        # for each label and its count 
         for value, count in zip(counts.index, counts):
             sub_arr = self.labels[self.labels == value]
             ratio_sub = max_counts / len(sub_arr)
 
-            # more than Twice, add the entire sub-set
+            # more than twice, add the entire sub-set
             if ratio_sub > 2:
                 for n in range(int(ratio_sub) - 1):
                     sub_arr = sub_arr.append(self.labels[self.labels == value])
 
-            # rest of the division, add until reaching the max_count
+            # rest of the division, add until reaching the `max_count`
             diff_sub = max_counts - len(sub_arr)
             if diff_sub != 0:
                 sub_arr = sub_arr.append(self.labels[self.labels == value].iloc[:diff_sub])
@@ -333,16 +341,17 @@ class VideoGenerator(DataGenerator, PreProcessing):
     
 class TestVideoGenerator(VideoGenerator):
     """
-    Creates a DataGenerator in testing mode with explicit name
+    Creates a VideoGenerator in testing mode with explicit name
     """
     def __init__(self, data_directory, ids, labels, dim):
         super().__init__(data_directory, ids, labels, dim,
-                        batch_size=1,
-                        tesing=True)
+                        testing=True)
 
         
 class AutoEncoderGenerator(DataGenerator, PreProcessing):
-
+    """
+    Creates a VideoGenerator without labels.
+    """
     def __init__(self, data_directory, ids, dim, pre_processing_dict=None,
                  batch_size=32,
                  shuffle=True):
